@@ -29,10 +29,7 @@ tooling against.
 | `scripts/*.cs` | Dev tooling, as single-file C# programs — `dotnet scripts/foo.cs -- <args>`. |
 | `version.json` | Nerdbank.GitVersioning config, if present. |
 
-## Conventions inherited deliberately
-
-These come from `flatrick/dotnet-knowledge`, where this content originated. They are kept because
-they earned their place, not out of habit.
+## Conventions
 
 1. **Tooling is single-file C#, never a shell script.** No `.sh`, `.ps1`, `.bat`, or `.py`. Every
    tool must run on native Windows with only the .NET SDK, and needs no project of its own. Pass

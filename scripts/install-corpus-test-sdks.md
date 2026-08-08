@@ -36,7 +36,7 @@ To invoke the full suite through the private host, set `DOTNET_HOST_PATH` and us
 
 ```powershell
 $env:DOTNET_HOST_PATH = (Resolve-Path .artifacts\dotnet\dotnet.exe)
-& $env:DOTNET_HOST_PATH test tests/DotNetKnowledge.Corpus.Tests/DotNetKnowledge.Corpus.Tests.csproj --nologo
+& $env:DOTNET_HOST_PATH test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --nologo
 ```
 
 Remove the private installation by deleting its directory, for example

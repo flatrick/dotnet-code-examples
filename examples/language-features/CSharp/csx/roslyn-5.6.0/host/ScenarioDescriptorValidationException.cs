@@ -1,4 +1,4 @@
-namespace DotNetKnowledge.CSharpScriptHost;
+namespace DotNetCodeExamples.CSharpScriptHost;
 
 internal sealed class ScenarioDescriptorValidationException : Exception
 {

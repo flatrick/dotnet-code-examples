@@ -13,7 +13,7 @@
 // The comparison is over the whole dotted RootNamespace, not its first segment. Every corpus
 // coordinate happens to be one segment (Net10_CSharp13_Library), so a first-segment test passed
 // there — and reported all nine files of the one project with a dotted RootNamespace,
-// DotNetKnowledge.CSharpScriptHost, as wrong when each of them names it exactly.
+// DotNetCodeExamples.CSharpScriptHost, as wrong when each of them names it exactly.
 //
 // In C# that pairing is not automatic: <RootNamespace> only seeds new-file templates, it does not
 // wrap existing files. So the two drift silently, which is exactly what happened before this guard

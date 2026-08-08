@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace DotNetKnowledge.CSharpScriptHost;
+namespace DotNetCodeExamples.CSharpScriptHost;
 
 internal static class ScenarioDescriptorLoader
 {

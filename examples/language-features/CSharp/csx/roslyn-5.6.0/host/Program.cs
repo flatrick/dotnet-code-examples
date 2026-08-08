@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.CodeAnalysis.Scripting;
 
-namespace DotNetKnowledge.CSharpScriptHost;
+namespace DotNetCodeExamples.CSharpScriptHost;
 
 internal static class Program
 {

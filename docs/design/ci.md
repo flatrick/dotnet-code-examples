@@ -4,9 +4,8 @@ One workflow, `.github/workflows/corpus-tests.yml`, running one job, `corpus-tes
 corpus build matrix and the project-namespace guard.
 
 **Nothing here currently executes.** Actions is disabled for this repository, so no trigger below
-fires and verification is whatever is run locally. Minutes cost money on a private repository, and
-while this is a personal project that cost buys nothing a local run does not. The configuration is
-kept current anyway, so enabling Actions is a settings change rather than a project.
+fires and verification is whatever is run locally. The configuration is kept current anyway, so
+enabling Actions is a settings change rather than a project.
 
 ## What runs, and when
 

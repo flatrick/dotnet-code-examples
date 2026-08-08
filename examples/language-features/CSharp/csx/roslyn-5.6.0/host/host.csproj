@@ -4,10 +4,10 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>DotNetKnowledge.CSharpScriptHost</RootNamespace>
+    <RootNamespace>DotNetCodeExamples.CSharpScriptHost</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="5.6.0" />
-    <InternalsVisibleTo Include="DotNetKnowledge.Corpus.Tests" />
+    <InternalsVisibleTo Include="DotNetCodeExamples.Corpus.Tests" />
   </ItemGroup>
 </Project>

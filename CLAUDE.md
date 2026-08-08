@@ -36,7 +36,7 @@ vswhere -latest -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBu
 MSBuild.exe examples/language-features/CSharp/dotNetFramework/v4.8/CSharp_v7.0/CSharp70.csproj -t:Restore;Build
 ```
 
-The corpus test suite is `tests/DotNetKnowledge.Corpus.Tests/`. Its exact SDK versions are installed
+The corpus test suite is `tests/DotNetCodeExamples.Corpus.Tests/`. Its exact SDK versions are installed
 or verified with `dotnet scripts/install-corpus-test-sdks.cs`; run the suite through the private
 host documented in [`scripts/install-corpus-test-sdks.md`](scripts/install-corpus-test-sdks.md).
 
@@ -49,7 +49,7 @@ or 7.0.410, so the compiler-boundary cases skip and the toolchain preflight fail
    `scripts/Directory.Build.props` resets the production analyzer settings for these.
    [`scripts/shared/`](scripts/shared/) is the one exception, for code a test must also compile —
    today just `CompileItems.cs`, the VB `Compile` glob resolver `verify-feature-floors.cs`
-   `#:include`s and `DotNetKnowledge.Corpus.Tests.csproj` links.
+   `#:include`s and `DotNetCodeExamples.Corpus.Tests.csproj` links.
 2. **State current truth only.** `git log` is the changelog.
 3. **American English.**
 4. **LF line endings, UTF-8**, enforced by `.gitattributes`.

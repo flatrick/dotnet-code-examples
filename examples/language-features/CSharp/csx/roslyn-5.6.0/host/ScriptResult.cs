@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace DotNetKnowledge.CSharpScriptHost;
+namespace DotNetCodeExamples.CSharpScriptHost;
 
 internal sealed record ScriptSuccess(
     string ScenarioId,

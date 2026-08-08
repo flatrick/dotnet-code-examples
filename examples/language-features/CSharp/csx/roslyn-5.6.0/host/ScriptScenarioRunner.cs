@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
 
-namespace DotNetKnowledge.CSharpScriptHost;
+namespace DotNetCodeExamples.CSharpScriptHost;
 
 internal sealed class ScriptScenarioRunner
 {

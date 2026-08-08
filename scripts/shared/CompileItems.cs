@@ -2,10 +2,10 @@
 
 using System.Xml.Linq;
 
-namespace DotNetKnowledge.CorpusTooling;
+namespace DotNetCodeExamples.CorpusTooling;
 
 // Resolving a VB project's Compile items to a set of files on disk, shared by the two consumers that
-// need the answer: tests/DotNetKnowledge.Corpus.Tests/Projects/VbSourceCoverageTests.cs, which asks
+// need the answer: tests/DotNetCodeExamples.Corpus.Tests/Projects/VbSourceCoverageTests.cs, which asks
 // whether a corpus row is compiled by anything, and scripts/verify-feature-floors.cs, which asks
 // which rows a project owns. The two used to implement this separately and agreed only by
 // inspection; drift between them would produce a blind spot precisely where two guards appear to

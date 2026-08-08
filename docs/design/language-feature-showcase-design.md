@@ -501,7 +501,7 @@ Manifest completeness is satisfied when:
 - every project in the current on-disk matrix builds with 0 errors and 0 warnings.
 
 That establishes authored coverage, not the stronger compilation-boundary or runtime layers.
-Checked-in cases under `tests/DotNetKnowledge.Corpus.Tests/TestCases/` supply those layers for the
+Checked-in cases under `tests/DotNetCodeExamples.Corpus.Tests/TestCases/` supply those layers for the
 claims they name. Use [`../../scripts/install-corpus-test-sdks.md`](../../scripts/install-corpus-test-sdks.md)
 to install or verify the exact SDKs in the repository-private test host; do not reproduce that setup
 manually.

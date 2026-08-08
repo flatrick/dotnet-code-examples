@@ -34,7 +34,7 @@ then run the full suite through the private host per
 The unit-only test subset needs Windows and SDK 10 only; its process tests invoke `cmd`:
 
 ```powershell
-dotnet test tests/DotNetKnowledge.Corpus.Tests/DotNetKnowledge.Corpus.Tests.csproj --filter "TestCategory=Unit"
+dotnet test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --filter "TestCategory=Unit"
 ```
 
 ## Status
@@ -48,11 +48,8 @@ MIT — see [`LICENSE`](LICENSE).
 Everything in this repository is authored here. [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)
 sets out why the example corpus is original work rather than derived from Microsoft's documentation.
 
-## Provenance
+## Who this is for
 
-This corpus was originally developed inside
-[flatrick/dotnet-knowledge](https://github.com/flatrick/dotnet-knowledge), an MCP server for
-version-pinned reference material about C#, VB.NET, and Roslyn. It has no dependency on that
-project or any MCP tooling, and was extracted here to stand on its own — for anyone who wants
-worked, version-pinned language-feature examples, or a realistic multi-project, multi-TFM target
-for testing Roslyn analyzers and other .NET tooling.
+Anyone who wants worked, version-pinned language-feature examples, or a realistic multi-project,
+multi-TFM target for testing Roslyn analyzers and other .NET tooling. This repository has no
+dependency on any MCP server or tooling.

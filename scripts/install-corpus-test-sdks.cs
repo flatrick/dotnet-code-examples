@@ -103,7 +103,7 @@ if (missingVersions.Length != 0)
         + string.Join(", ", missingVersions) + ".");
 
 Console.WriteLine("All required private SDKs are present.");
-Console.WriteLine($"Private test host: & {QuoteForPowerShell(privateHost)} test tests/DotNetKnowledge.Corpus.Tests/DotNetKnowledge.Corpus.Tests.csproj --nologo");
+Console.WriteLine($"Private test host: & {QuoteForPowerShell(privateHost)} test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --nologo");
 return 0;
 
 static int Usage(string error)

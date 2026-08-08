@@ -128,7 +128,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
-using DotNetKnowledge.CorpusTooling;
+using DotNetCodeExamples.CorpusTooling;
 
 var projectFilter = (string?)null;
 var emitJson = false;

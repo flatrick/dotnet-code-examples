@@ -1,4 +1,4 @@
-namespace DotNetKnowledge.CSharpScriptHost;
+namespace DotNetCodeExamples.CSharpScriptHost;
 
 public sealed class ScriptGlobals(
     string[] args,

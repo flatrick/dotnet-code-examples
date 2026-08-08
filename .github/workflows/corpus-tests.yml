@@ -37,13 +37,13 @@ jobs:
         shell: pwsh
         run: |
           $env:DOTNET_HOST_PATH = (Resolve-Path .artifacts\dotnet\dotnet.exe)
-          & $env:DOTNET_HOST_PATH restore tests/DotNetKnowledge.Corpus.Tests/DotNetKnowledge.Corpus.Tests.csproj --nologo
+          & $env:DOTNET_HOST_PATH restore tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --nologo
 
       - name: Verify corpus compilation and runtime behavior
         shell: pwsh
         run: |
           $env:DOTNET_HOST_PATH = (Resolve-Path .artifacts\dotnet\dotnet.exe)
-          & $env:DOTNET_HOST_PATH test tests/DotNetKnowledge.Corpus.Tests/DotNetKnowledge.Corpus.Tests.csproj --configuration Release --nologo --no-restore --logger "trx;LogFileName=corpus-tests.trx"
+          & $env:DOTNET_HOST_PATH test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --configuration Release --nologo --no-restore --logger "trx;LogFileName=corpus-tests.trx"
 
       - name: Verify project namespaces
         run: dotnet scripts/verify-project-namespaces.cs
@@ -53,4 +53,4 @@ jobs:
         uses: actions/upload-artifact@v7.0.1
         with:
           name: corpus-test-results
-          path: tests/DotNetKnowledge.Corpus.Tests/TestResults/corpus-tests.trx
+          path: tests/DotNetCodeExamples.Corpus.Tests/TestResults/corpus-tests.trx
