@@ -16,7 +16,9 @@ public sealed class CSharpScriptTestPathsTests
             "csx",
             "roslyn-5.6.0");
 
-        Assert.IsTrue(File.Exists(Path.Combine(repositoryRoot, "sources.json")));
+        Assert.IsTrue(
+            Directory.Exists(Path.Combine(repositoryRoot, ".git"))
+            || File.Exists(Path.Combine(repositoryRoot, ".git")));
         Assert.AreEqual(expectedShowcaseRoot, CSharpScriptTestPaths.ShowcaseRoot);
     }
 

@@ -42,7 +42,9 @@ internal static class CSharpScriptTestPaths
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "sources.json")))
+        while (directory is not null
+            && !Directory.Exists(Path.Combine(directory.FullName, ".git"))
+            && !File.Exists(Path.Combine(directory.FullName, ".git")))
         {
             directory = directory.Parent;
         }

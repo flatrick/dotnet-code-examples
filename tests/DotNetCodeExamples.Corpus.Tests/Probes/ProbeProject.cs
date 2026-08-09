@@ -310,7 +310,8 @@ internal sealed partial class ProbeProject
             var directory = new DirectoryInfo(start);
             while (directory is not null)
             {
-                if (File.Exists(Path.Combine(directory.FullName, "sources.json")))
+                if (Directory.Exists(Path.Combine(directory.FullName, ".git"))
+                    || File.Exists(Path.Combine(directory.FullName, ".git")))
                 {
                     return directory.FullName;
                 }
