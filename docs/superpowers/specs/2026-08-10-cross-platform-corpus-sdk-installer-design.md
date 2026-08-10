@@ -12,6 +12,7 @@ tracked shell script. This does not make the Windows-only corpus matrix runnable
 - Use only Microsoft-published `dotnet-install` scripts and SDK payloads.
 - Install into `.artifacts/dotnet` by default and retain `--install-dir` and `--check` behavior.
 - Do not modify the machine-wide .NET installation or the caller's `PATH`.
+- Keep downloaded installer files under the repository root's ignored `.scratch/` directory.
 - Preserve all required SDKs side by side while retaining the newest private `dotnet` host.
 - Keep Windows behavior supported and provide platform-appropriate commands and documentation.
 - Reject unsupported operating systems explicitly.
@@ -24,6 +25,8 @@ The C# program selects `dotnet-install.ps1` plus `powershell.exe` on Windows and
 `dotnet-install.sh` plus `bash` on Linux. It also selects `dotnet.exe` or `dotnet` as the private
 host. This delegates architecture, glibc-versus-musl detection, download selection, and archive
 extraction to Microsoft's maintained installers while retaining one repository-native entry point.
+The platform contract remains in that entry point because this bootstrap tool must run under a .NET
+10.0.1xx host, whose file-based-app implementation does not recognize `#:include`.
 
 This is the selected approach because it is the smallest design that satisfies the repository's
 tooling convention and avoids distro package managers.
@@ -55,10 +58,12 @@ Argument validation remains platform-independent. Windows and Linux then resolve
 to the installation directory. A missing host is an empty installation rather than an exceptional
 condition.
 
-Normal installation downloads the platform installer to a uniquely named temporary file. Missing
-SDKs are installed from newest to oldest. Once a private host exists, subsequent installations use
-the installer's skip-non-versioned-files option so an older SDK cannot replace the newest host.
-The temporary installer is deleted in a `finally` block.
+Normal installation downloads the platform installer to a uniquely named file under the repository
+root's ignored `.scratch/` directory. Missing SDKs are installed from newest to oldest. An
+installation uses the installer's
+skip-non-versioned-files option when the inventory already contains a newer SDK; this preserves a
+newer host without preventing a newly installed SDK from replacing an older host. The temporary
+installer is deleted in a `finally` block.
 
 After installation, the program asks the private host for its SDK inventory again and fails if any
 required exact version is absent. Its success output prints a command appropriate to the current

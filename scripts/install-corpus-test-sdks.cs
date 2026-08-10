@@ -76,13 +76,15 @@ if (checkOnly)
 if (missingVersions.Length != 0)
 {
     Directory.CreateDirectory(resolvedInstallDir);
+    var scratchDirectory = Path.Combine(repoRoot, ".scratch");
+    Directory.CreateDirectory(scratchDirectory);
     var installerPath = Path.Combine(
-        Path.GetTempPath(),
+        scratchDirectory,
         $"dotnet-install-{Guid.NewGuid():N}{platform.InstallerExtension}");
 
     try
     {
-        Console.WriteLine("Downloading the Microsoft dotnet-install script to a temporary file.");
+        Console.WriteLine("Downloading the Microsoft dotnet-install script to the repository scratch directory.");
         using var client = new HttpClient();
         await File.WriteAllBytesAsync(installerPath,
             await client.GetByteArrayAsync(platform.InstallerUri));
@@ -201,6 +203,9 @@ static string? FindRepoRoot(string start)
 
 internal readonly record struct ProcessResult(int ExitCode, string StandardOutput, string StandardError);
 
+// This bootstrap script must stay self-contained: a .NET 10.0.1xx host can run a file-based C#
+// program but does not recognize #:include, and installing the required 10.0.3xx host is this
+// program's job.
 internal sealed class CorpusSdkInstallerPlatform
 {
     private static readonly CorpusSdkInstallerPlatform Windows = new(

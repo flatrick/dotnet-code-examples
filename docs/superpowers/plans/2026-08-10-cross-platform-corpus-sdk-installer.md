@@ -5,10 +5,10 @@
 **Goal:** Make the repository-private corpus SDK installer support Windows and Linux without using
 a distro package manager or adding a tracked shell script.
 
-**Architecture:** Keep `install-corpus-test-sdks.cs` as the single entry point and move only its
-platform-specific values and argument construction into one `scripts/shared` C# type that the test
-project also compiles. Exercise that type with unit tests and launch the real script in `--check`
-mode as a network-free integration test before changing production behavior.
+**Architecture:** Keep `install-corpus-test-sdks.cs` as one self-contained entry point so it can
+bootstrap the 10.0.3xx SDK under a 10.0.1xx file-based-app host, which does not support `#:include`.
+Launch the real script in `--check` mode as a network-free integration test before changing
+production behavior.
 
 **Tech Stack:** .NET 10 file-based C#, MSTest 4.3.2, Microsoft's `dotnet-install.ps1` and
 `dotnet-install.sh`.
@@ -19,6 +19,8 @@ mode as a network-free integration test before changing production behavior.
 - Use only Microsoft-published `dotnet-install` scripts and SDK payloads.
 - Install into `.artifacts/dotnet` by default and retain `--install-dir` and `--check` behavior.
 - Do not modify the machine-wide .NET installation or the caller's `PATH`.
+- Keep downloaded installer files and disposable verification roots under the repository root's
+  ignored `.scratch/` directory.
 - Preserve all required SDKs side by side while retaining the newest private `dotnet` host.
 - Keep Windows behavior supported and provide platform-appropriate commands and documentation.
 - Reject operating systems other than Windows and Linux explicitly.
@@ -26,106 +28,21 @@ mode as a network-free integration test before changing production behavior.
 
 ---
 
-### Task 1: Platform-specific installer contract
-
-**Files:**
-- Create: `scripts/shared/CorpusSdkInstallerPlatform.cs`
-- Create: `tests/DotNetCodeExamples.Corpus.Tests/Toolchains/CorpusSdkInstallerPlatformTests.cs`
-- Modify: `tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj`
-
-**Interfaces:**
-- Produces: `CorpusSdkInstallerPlatform.ForOperatingSystem(bool isWindows, bool isLinux)`.
-- Produces: `HostFileName`, `InstallerUri`, `InstallerExtension`, and `RunnerFileName` values.
-- Produces: `BuildInstallerArguments(string installerPath, string version, string installDir,
-  bool preserveExistingHost)` and `FormatTestCommand(string privateHost)`.
-- Consumes: no repository-specific implementation beyond `System` collections and strings.
-
-- [ ] **Step 1: Link the wished-for shared implementation into the test project**
-
-Add this item next to the existing linked `CompileItems.cs` item:
-
-```xml
-<Compile Include="..\..\scripts\shared\CorpusSdkInstallerPlatform.cs"
-         Link="Shared\CorpusSdkInstallerPlatform.cs" />
-```
-
-- [ ] **Step 2: Write failing platform contract tests**
-
-Create table-driven MSTest coverage that hand-checks these Windows values:
-
-```text
-host: dotnet.exe
-URI: https://dot.net/v1/dotnet-install.ps1
-extension: .ps1
-runner: powershell.exe
-arguments: -NoProfile -ExecutionPolicy Bypass -File <file> -Version <version>
-           -InstallDir <dir> -NoPath [-SkipNonVersionedFiles]
-```
-
-and these Linux values:
-
-```text
-host: dotnet
-URI: https://dot.net/v1/dotnet-install.sh
-extension: .sh
-runner: bash
-arguments: <file> --version <version> --install-dir <dir> --no-path
-           [--skip-non-versioned-files]
-```
-
-Also assert that neither platform selected throws `PlatformNotSupportedException`, and that a
-private-host path containing a single quote is shell-quoted correctly by `FormatTestCommand`.
-
-- [ ] **Step 3: Run the focused tests and verify RED**
-
-Run:
-
-```bash
-dotnet test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj \
-  --nologo --filter FullyQualifiedName~CorpusSdkInstallerPlatformTests
-```
-
-Expected: compilation fails because `CorpusSdkInstallerPlatform` does not exist.
-
-- [ ] **Step 4: Implement the minimal shared platform contract**
-
-Implement an immutable `internal sealed class CorpusSdkInstallerPlatform` with two static instances
-selected by `ForOperatingSystem`. Return literal argument arrays in platform spelling and append the
-skip-non-versioned-files switch only when `preserveExistingHost` is true. Quote PowerShell paths by
-doubling single quotes and POSIX shell paths with the standard `'<text>'` plus `'"'"'"'`
-escape for embedded single quotes.
-
-- [ ] **Step 5: Run the focused tests and verify GREEN**
-
-Run the command from Step 3. Expected: all `CorpusSdkInstallerPlatformTests` pass with zero build
-warnings and errors.
-
-- [ ] **Step 6: Commit the platform contract**
-
-```bash
-git add scripts/shared/CorpusSdkInstallerPlatform.cs \
-  tests/DotNetCodeExamples.Corpus.Tests/Toolchains/CorpusSdkInstallerPlatformTests.cs \
-  tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj
-git commit -m "test: define cross-platform corpus SDK installer contract"
-```
-
-### Task 2: Real Linux check-mode behavior
+### Task 1: Real Linux check-mode contract
 
 **Files:**
 - Create: `tests/DotNetCodeExamples.Corpus.Tests/Toolchains/InstallCorpusTestSdksScriptTests.cs`
-- Modify: `scripts/install-corpus-test-sdks.cs`
 
 **Interfaces:**
-- Consumes: `CorpusSdkInstallerPlatform.ForOperatingSystem` and its properties/methods from Task 1.
-- Produces: existing command-line interface with working Windows and Linux `--check` and install
-  paths.
+- Produces: a process-level regression test for the existing installer command line.
+- Consumes: the current `dotnet` host and a unique nonexistent installation path under `.scratch/`.
 
 - [ ] **Step 1: Write a failing integration test against the real script**
 
 Launch the current `dotnet` host with:
 
 ```text
-scripts/install-corpus-test-sdks.cs -- --check --install-dir <unique nonexistent temp path>
+scripts/install-corpus-test-sdks.cs -- --check --install-dir <repo>/.scratch/<unique path>
 ```
 
 On Windows and Linux assert exit code `1`, output naming the private SDK directory and each missing
@@ -145,38 +62,48 @@ dotnet test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Test
 Expected on Linux: failure because the real script exits through its Windows-only guard before
 inventory reporting.
 
-- [ ] **Step 3: Implement platform selection and installer invocation**
+### Task 2: Cross-platform installer behavior
 
-Add `#:include shared/CorpusSdkInstallerPlatform.cs`. Replace the Windows-only guard and hard-coded
-host/installer values with the platform contract. Download the selected installer extension, order
-missing versions with `Version.Parse` descending, and invoke `BuildInstallerArguments`, passing
-`File.Exists(privateHost)` so every older side-by-side install preserves the newest host. Retain
-captured output, cleanup, exact post-install inventory verification, and usage behavior.
+**Files:**
+- Modify: `scripts/install-corpus-test-sdks.cs`
 
-- [ ] **Step 4: Run the integration and platform tests and verify GREEN**
+**Interfaces:**
+- Consumes: the real-script integration test from Task 1.
+- Produces: existing command-line interface with working Windows and Linux `--check` and install
+  paths.
+
+- [ ] **Step 1: Implement platform selection and installer invocation**
+
+Replace the Windows-only guard and hard-coded host/installer values with a self-contained platform
+contract. Download the selected installer extension and order missing versions with `Version.Parse`
+descending. Preserve non-versioned files only when the inventory already contains an SDK newer than
+the one being installed, so a newer host is retained without preventing replacement of an older
+host. Retain captured output, cleanup, exact post-install inventory verification, and usage behavior.
+
+- [ ] **Step 2: Run the integration test and verify GREEN**
 
 Run:
 
 ```bash
 dotnet test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj \
-  --nologo --filter 'FullyQualifiedName~InstallCorpusTestSdksScriptTests|FullyQualifiedName~CorpusSdkInstallerPlatformTests'
+  --nologo --filter FullyQualifiedName~InstallCorpusTestSdksScriptTests
 ```
 
-Expected: all focused tests pass with zero build warnings and errors.
+Expected: the focused test passes with zero build warnings and errors.
 
-- [ ] **Step 5: Exercise Linux check mode directly**
+- [ ] **Step 3: Exercise Linux check mode directly**
 
 Run:
 
 ```bash
 dotnet scripts/install-corpus-test-sdks.cs -- \
-  --check --install-dir /tmp/corpus-sdk-linux-check
+  --check --install-dir "$PWD/.scratch/corpus-sdk-linux-check"
 ```
 
 Expected: exit `1`, normal private-directory and three-missing-SDK reporting, no download, and no
-creation of `/tmp/corpus-sdk-linux-check`.
+creation of `.scratch/corpus-sdk-linux-check`.
 
-- [ ] **Step 6: Commit the real script behavior**
+- [ ] **Step 4: Commit the real script behavior**
 
 ```bash
 git add scripts/install-corpus-test-sdks.cs \
@@ -206,7 +133,7 @@ Run:
 
 ```bash
 dotnet test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --nologo
-dotnet scripts/install-corpus-test-sdks.cs -- --check --install-dir /tmp/corpus-sdk-linux-check
+dotnet scripts/install-corpus-test-sdks.cs -- --check --install-dir "$PWD/.scratch/corpus-sdk-linux-check"
 git diff --check
 git status --short
 ```

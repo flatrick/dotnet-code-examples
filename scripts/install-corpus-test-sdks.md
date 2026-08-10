@@ -12,9 +12,23 @@ Install or verify them with:
 dotnet scripts/install-corpus-test-sdks.cs
 ```
 
+```bash
+dotnet scripts/install-corpus-test-sdks.cs
+```
+
 The command installs only versions that are absent from `.artifacts/dotnet`. It never changes the
 machine-wide .NET installation or `PATH`. The private root supplies the exact compiler and runtime
 bands that the matrix needs while allowing the machine's normal .NET setup to remain untouched.
+On Windows the tool downloads Microsoft's `dotnet-install.ps1`; on Linux it downloads Microsoft's
+`dotnet-install.sh` and runs it with Bash. The Linux path does not use AUR, another distro package
+manager, or a tracked shell script. The downloaded installer is transient: it is written under the
+repository's ignored `.scratch/` directory and deleted after the install attempt.
+
+The Microsoft installer does not install a Linux distribution's native dependencies. Those remain
+the operator's responsibility, particularly when running the end-of-life .NET 5 and .NET 7 SDKs on
+a current distribution. Installing and checking the private SDK root is cross-platform; the full
+corpus matrix remains Windows-only because its legacy projects need Visual Studio's `MSBuild.exe`
+and its net48 runtime cases need .NET Framework.
 
 `TargetFramework=net5.0` selects the target runtime and reference APIs; it does not select the
 SDK 5 compiler. The `dotnet` host selects the SDK, so tests that exercise compiler boundaries must
@@ -26,17 +40,33 @@ Check a root without downloading or modifying anything:
 dotnet scripts/install-corpus-test-sdks.cs -- --check
 ```
 
+```bash
+dotnet scripts/install-corpus-test-sdks.cs -- --check
+```
+
 Use another absolute or relative private directory when needed:
 
 ```powershell
 dotnet scripts/install-corpus-test-sdks.cs -- --install-dir C:\build\corpus-dotnet
 ```
 
-To invoke the full suite through the private host, set `DOTNET_HOST_PATH` and use that host:
+```bash
+dotnet scripts/install-corpus-test-sdks.cs -- --install-dir "$PWD/.artifacts/corpus-dotnet"
+```
+
+To invoke the test project through the private host, set `DOTNET_HOST_PATH` and use that host:
 
 ```powershell
 $env:DOTNET_HOST_PATH = (Resolve-Path .artifacts\dotnet\dotnet.exe)
 & $env:DOTNET_HOST_PATH test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --nologo
+```
+
+On Linux:
+
+```bash
+private_host="$PWD/.artifacts/dotnet/dotnet"
+DOTNET_HOST_PATH="$private_host" \
+  "$private_host" test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --nologo
 ```
 
 Remove the private installation by deleting its directory, for example

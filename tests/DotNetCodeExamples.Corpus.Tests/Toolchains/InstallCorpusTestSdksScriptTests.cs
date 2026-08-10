@@ -18,7 +18,8 @@ public sealed class InstallCorpusTestSdksScriptTests
 
         var repositoryRoot = RepositoryRoot();
         var installDirectory = Path.Combine(
-            Path.GetTempPath(),
+            repositoryRoot,
+            ".scratch",
             $"corpus-sdk-empty-{Guid.NewGuid():N}");
 
         try
