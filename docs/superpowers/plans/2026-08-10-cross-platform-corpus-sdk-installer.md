@@ -167,3 +167,95 @@ third-party content, unrelated refactor, or accidental generated artifact.
 git add scripts/install-corpus-test-sdks.md
 git commit -m "docs: document private SDK installation on Linux"
 ```
+
+### Task 4: Copy-paste completion command
+
+**Files:**
+- Modify: `scripts/install-corpus-test-sdks.cs:144-147,317-325`
+- Modify: `scripts/install-corpus-test-sdks.md:72-85`
+- Test: `tests/DotNetCodeExamples.Corpus.Tests/Toolchains/InstallCorpusTestSdksScriptTests.cs`
+
+**Interfaces:**
+- Consumes: `CorpusSdkInstallerPlatform.FormatTestCommand(string privateHost, string testProject)`
+  and the existing successful no-install completion path.
+- Produces: one PowerShell or Bash command that sets `DOTNET_HOST_PATH` and invokes that same private
+  host to run the corpus test project.
+
+- [ ] **Step 1: Write the failing process-level regression test**
+
+Add `CompletionPrintsCopyPasteTestCommandForCurrentPlatform`. On Linux, create an executable fake
+private host under a uniquely named `.scratch/corpus-sdk-command-'quote'-<guid>` directory whose
+`--list-sdks` output contains literal entries for `5.0.408`, `7.0.410`, and `10.0.302`. Run the real
+installer script without `--check` or `--dry-run` and assert this exact output line, with the actual
+path substituted and POSIX single-quote escaping applied by the literal expectation:
+
+```text
+Private test host: DOTNET_HOST_PATH='<escaped-host>' '<escaped-host>' test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --nologo
+```
+
+On Windows, use the already-installed default `.artifacts/dotnet/dotnet.exe` when its inventory
+contains all three required SDKs; otherwise mark the test inconclusive. Assert this exact output:
+
+```text
+Private test host: $env:DOTNET_HOST_PATH = '<escaped-host>'; & $env:DOTNET_HOST_PATH test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --nologo
+```
+
+The production mutation this test catches is removing the environment assignment, invoking a host
+other than the assigned path, or emitting shell quoting that cannot represent the selected path.
+
+- [ ] **Step 2: Run the focused test and verify RED**
+
+Run:
+
+```bash
+private_host="$PWD/.scratch/corpus-sdk-linux-e2e/dotnet"
+DOTNET_HOST_PATH="$private_host" "$private_host" test \
+  tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj \
+  --nologo --filter FullyQualifiedName~CompletionPrintsCopyPasteTestCommandForCurrentPlatform
+```
+
+Expected on Linux: FAIL because the current output invokes the quoted host but omits the
+`DOTNET_HOST_PATH=...` assignment.
+
+- [ ] **Step 3: Implement the two shell command formats**
+
+Change `FormatTestCommand` so PowerShell produces:
+
+```csharp
+return IsWindows
+    ? $"$env:DOTNET_HOST_PATH = {quotedHost}; & $env:DOTNET_HOST_PATH test {testProject} --nologo"
+    : $"DOTNET_HOST_PATH={quotedHost} {quotedHost} test {testProject} --nologo";
+```
+
+Retain the existing PowerShell single-quote escaping and POSIX single-quote escaping when computing
+`quotedHost`.
+
+- [ ] **Step 4: Update operator documentation**
+
+Make the PowerShell and Bash examples in `scripts/install-corpus-test-sdks.md` exactly match the
+single commands printed by successful completion. Keep them one-command copy-paste examples and do
+not mutate `PATH`.
+
+- [ ] **Step 5: Run focused verification and verify GREEN**
+
+Run:
+
+```bash
+private_host="$PWD/.scratch/corpus-sdk-linux-e2e/dotnet"
+DOTNET_HOST_PATH="$private_host" "$private_host" test \
+  tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj \
+  --nologo --filter FullyQualifiedName~InstallCorpusTestSdksScriptTests
+git diff --check
+```
+
+Expected: all installer-script tests pass with zero build warnings and errors; `git diff --check`
+prints nothing and exits `0`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add scripts/install-corpus-test-sdks.cs scripts/install-corpus-test-sdks.md \
+  tests/DotNetCodeExamples.Corpus.Tests/Toolchains/InstallCorpusTestSdksScriptTests.cs \
+  docs/superpowers/plans/2026-08-10-cross-platform-corpus-sdk-installer.md
+git commit -m "fix: print copy-paste private test commands"
+```
