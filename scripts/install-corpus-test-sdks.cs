@@ -13,6 +13,7 @@ using System.Text.RegularExpressions;
 var requiredVersions = new[] { "5.0.408", "7.0.410", "10.0.302" };
 var installDir = "";
 var checkOnly = false;
+var dryRun = false;
 
 for (var i = 0; i < args.Length; i++)
 {
@@ -20,6 +21,9 @@ for (var i = 0; i < args.Length; i++)
     {
         case "--check":
             checkOnly = true;
+            break;
+        case "--dry-run":
+            dryRun = true;
             break;
         case "--install-dir":
             if (installDir.Length != 0 || ++i >= args.Length || args[i].Length == 0
@@ -32,6 +36,9 @@ for (var i = 0; i < args.Length; i++)
             return Usage($"Unknown option: {args[i]}");
     }
 }
+
+if (checkOnly && dryRun)
+    return Usage("--check and --dry-run cannot be specified together.");
 
 CorpusSdkInstallerPlatform platform;
 try
@@ -75,7 +82,8 @@ if (checkOnly)
 
 if (missingVersions.Length != 0)
 {
-    Directory.CreateDirectory(resolvedInstallDir);
+    if (!dryRun)
+        Directory.CreateDirectory(resolvedInstallDir);
     var scratchDirectory = Path.Combine(repoRoot, ".scratch");
     Directory.CreateDirectory(scratchDirectory);
     var installerPath = Path.Combine(
@@ -92,13 +100,23 @@ if (missingVersions.Length != 0)
         foreach (var version in missingVersions.OrderByDescending(Version.Parse))
         {
             Console.WriteLine($"Installing SDK {version} into the private directory.");
+            var installerArguments = platform.BuildInstallerArguments(
+                installerPath,
+                version,
+                resolvedInstallDir,
+                CorpusSdkInstallerPlatform.ShouldPreserveExistingHost(version, presentVersions),
+                dryRun);
+
+            if (dryRun)
+            {
+                var switches = installerArguments.Where(
+                    argument => argument.StartsWith("-", StringComparison.Ordinal));
+                Console.WriteLine($"Dry-run switches for SDK {version}: {string.Join(" ", switches)}");
+            }
+
             var result = await RunProcess(
                 platform.RunnerFileName,
-                platform.BuildInstallerArguments(
-                    installerPath,
-                    version,
-                    resolvedInstallDir,
-                    CorpusSdkInstallerPlatform.ShouldPreserveExistingHost(version, presentVersions)));
+                installerArguments);
             ReportProcessOutput($"Installer output for SDK {version}", result);
             RequireSuccess($"Installer for SDK {version}", result);
             presentVersions.Add(version);
@@ -109,6 +127,12 @@ if (missingVersions.Length != 0)
         if (File.Exists(installerPath))
             File.Delete(installerPath);
     }
+}
+
+if (dryRun)
+{
+    Console.WriteLine("Dry run complete; no SDK payloads were installed.");
+    return 0;
 }
 
 presentVersions = ListInstalledSdkVersions(privateHost);
@@ -126,7 +150,8 @@ return 0;
 static int Usage(string error)
 {
     Console.Error.WriteLine(error);
-    Console.Error.WriteLine("Usage: dotnet scripts/install-corpus-test-sdks.cs -- [--check] [--install-dir <path>]");
+    Console.Error.WriteLine(
+        "Usage: dotnet scripts/install-corpus-test-sdks.cs -- [--check | --dry-run] [--install-dir <path>]");
     return 2;
 }
 
@@ -269,7 +294,8 @@ internal sealed class CorpusSdkInstallerPlatform
         string installerPath,
         string version,
         string installDir,
-        bool preserveExistingHost)
+        bool preserveExistingHost,
+        bool dryRun)
     {
         var arguments = IsWindows
             ? new List<string>
@@ -284,6 +310,8 @@ internal sealed class CorpusSdkInstallerPlatform
 
         if (preserveExistingHost)
             arguments.Add(IsWindows ? "-SkipNonVersionedFiles" : "--skip-non-versioned-files");
+        if (dryRun)
+            arguments.Add(IsWindows ? "-DryRun" : "--dry-run");
 
         return arguments.ToArray();
     }

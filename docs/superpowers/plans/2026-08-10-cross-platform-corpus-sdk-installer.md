@@ -17,7 +17,8 @@ production behavior.
 
 - Keep the tool as one file-based C# program invoked with `dotnet`.
 - Use only Microsoft-published `dotnet-install` scripts and SDK payloads.
-- Install into `.artifacts/dotnet` by default and retain `--install-dir` and `--check` behavior.
+- Install into `.artifacts/dotnet` by default and retain `--install-dir`, `--check`, and `--dry-run`
+  behavior.
 - Do not modify the machine-wide .NET installation or the caller's `PATH`.
 - Keep downloaded installer files and disposable verification roots under the repository root's
   ignored `.scratch/` directory.
@@ -66,11 +67,13 @@ inventory reporting.
 
 **Files:**
 - Modify: `scripts/install-corpus-test-sdks.cs`
+- Modify: `tests/DotNetCodeExamples.Corpus.Tests/Toolchains/InstallCorpusTestSdksScriptTests.cs`
 
 **Interfaces:**
 - Consumes: the real-script integration test from Task 1.
 - Produces: existing command-line interface with working Windows and Linux `--check` and install
   paths.
+- Produces: a Linux Bash-installer smoke path that resolves payloads without downloading them.
 
 - [ ] **Step 1: Implement platform selection and installer invocation**
 
@@ -103,7 +106,13 @@ dotnet scripts/install-corpus-test-sdks.cs -- \
 Expected: exit `1`, normal private-directory and three-missing-SDK reporting, no download, and no
 creation of `.scratch/corpus-sdk-linux-check`.
 
-- [ ] **Step 4: Commit the real script behavior**
+- [ ] **Step 4: Exercise the Linux installer without downloading payloads**
+
+Run the installer tests on Linux. The dry-run test supplies a temporary private host reporting SDK
+5.0.408, downloads Microsoft's Bash installer, and requires successful newest-first requests for
+10.0.302 and 7.0.410. It must leave neither SDK payloads nor an installer file behind.
+
+- [ ] **Step 5: Commit the real script behavior**
 
 ```bash
 git add scripts/install-corpus-test-sdks.cs \
@@ -115,6 +124,8 @@ git commit -m "feat: support Linux corpus SDK installation"
 
 **Files:**
 - Modify: `scripts/install-corpus-test-sdks.md`
+- Modify: `.github/workflows/corpus-tests.yml`
+- Modify: `docs/design/ci.md`
 
 **Interfaces:**
 - Consumes: the unchanged CLI and platform-specific host names from Task 2.
@@ -126,6 +137,9 @@ Keep the exact SDK list and explain that the tool downloads Microsoft's platform
 PowerShell and Bash blocks for installation, `--check`, custom installation roots, and invoking the
 private host. State that no distro package manager or AUR package is used, native dependencies remain
 the operator's responsibility, and the full corpus matrix remains Windows-only.
+
+Add a pinned Ubuntu job that runs only `InstallCorpusTestSdksScriptTests`; it must not install the
+private SDK payloads or run the Windows-only corpus matrix.
 
 - [ ] **Step 2: Run repository verification**
 

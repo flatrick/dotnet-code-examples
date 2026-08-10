@@ -10,7 +10,8 @@ tracked shell script. This does not make the Windows-only corpus matrix runnable
 
 - Keep the tool as one file-based C# program invoked with `dotnet`.
 - Use only Microsoft-published `dotnet-install` scripts and SDK payloads.
-- Install into `.artifacts/dotnet` by default and retain `--install-dir` and `--check` behavior.
+- Install into `.artifacts/dotnet` by default and retain `--install-dir`, `--check`, and `--dry-run`
+  behavior.
 - Do not modify the machine-wide .NET installation or the caller's `PATH`.
 - Keep downloaded installer files under the repository root's ignored `.scratch/` directory.
 - Preserve all required SDKs side by side while retaining the newest private `dotnet` host.
@@ -56,7 +57,8 @@ Argument validation remains platform-independent. Windows and Linux then resolve
 
 `--check` only inspects the selected private host with `--list-sdks`; it never downloads or writes
 to the installation directory. A missing host is an empty installation rather than an exceptional
-condition.
+condition. `--dry-run` downloads the platform installer into `.scratch/` and executes its dry-run
+mode for missing SDKs without downloading payloads or modifying the installation root.
 
 Normal installation downloads the platform installer to a uniquely named file under the repository
 root's ignored `.scratch/` directory. Missing SDKs are installed from newest to oldest. An
@@ -75,9 +77,14 @@ message.
 ## Testing
 
 An integration test launches the real file-based program in `--check` mode against an empty
-temporary directory. On Linux this test fails against the Windows-only guard and passes only when
-the script reaches normal inventory reporting without downloading anything. The same test protects
-the existing Windows check path.
+temporary directory. Its assertions require normal inventory reporting without downloading or
+creating the installation root. The same test protects the Windows and Linux check paths.
+
+A Linux-only integration test supplies a temporary private host reporting SDK 5.0.408, then runs
+the real program in `--dry-run` mode. Microsoft's Bash installer must accept both missing SDK
+requests in newest-first order, including the host-preservation switch on the older request. The
+test asserts that no SDK payload or installer file remains. CI runs only these installer tests on
+Ubuntu; it does not attempt the Windows-only corpus matrix.
 
 Focused verification runs that test and exercises the program directly on Linux. Full verification
 builds and runs the repository test project to the extent supported by the host; Windows-only

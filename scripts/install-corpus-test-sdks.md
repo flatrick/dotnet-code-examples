@@ -44,6 +44,21 @@ dotnet scripts/install-corpus-test-sdks.cs -- --check
 dotnet scripts/install-corpus-test-sdks.cs -- --check
 ```
 
+Exercise platform detection, the Microsoft installer download, SDK ordering, and installer
+arguments without downloading or installing SDK payloads:
+
+```powershell
+dotnet scripts/install-corpus-test-sdks.cs -- --dry-run
+```
+
+```bash
+dotnet scripts/install-corpus-test-sdks.cs -- --dry-run
+```
+
+Dry run still uses the network to download Microsoft's small platform installer into `.scratch/`.
+The installer resolves the requested payload URLs but does not download them, and the C# tool
+deletes the installer afterward.
+
 Use another absolute or relative private directory when needed:
 
 ```powershell

@@ -61,6 +61,84 @@ public sealed class InstallCorpusTestSdksScriptTests
         }
     }
 
+    [TestMethod]
+    [Timeout(120_000)]
+    public async Task DryRunExercisesTheLinuxInstallerWithoutInstallingSdkPayloads()
+    {
+        if (!OperatingSystem.IsLinux())
+        {
+            Assert.Inconclusive("The Bash installer smoke test runs on Linux only.");
+            return;
+        }
+
+        var repositoryRoot = RepositoryRoot();
+        var scratchDirectory = Path.Combine(repositoryRoot, ".scratch");
+        var installDirectory = Path.Combine(
+            scratchDirectory,
+            $"corpus-sdk-dry-run-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(installDirectory);
+
+        try
+        {
+            var privateHost = Path.Combine(installDirectory, "dotnet");
+            await File.WriteAllTextAsync(
+                privateHost,
+                """
+                #!/usr/bin/env bash
+                if [ "$1" = "--list-sdks" ]; then
+                    printf '5.0.408 [%s/sdk]\n' "$(dirname "$0")"
+                    exit 0
+                fi
+                exit 64
+                """);
+            File.SetUnixFileMode(
+                privateHost,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+            var startInfo = new ProcessStartInfo(CurrentDotnetHost())
+            {
+                WorkingDirectory = repositoryRoot,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            startInfo.ArgumentList.Add("scripts/install-corpus-test-sdks.cs");
+            startInfo.ArgumentList.Add("--");
+            startInfo.ArgumentList.Add("--dry-run");
+            startInfo.ArgumentList.Add("--install-dir");
+            startInfo.ArgumentList.Add(installDirectory);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Could not start the dotnet host.");
+            var standardOutput = process.StandardOutput.ReadToEndAsync();
+            var standardError = process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+            await Task.WhenAll(standardOutput, standardError);
+
+            Assert.AreEqual(0, process.ExitCode, standardError.Result);
+            var sdk10 = standardOutput.Result.IndexOf("Installing SDK 10.0.302", StringComparison.Ordinal);
+            var sdk7 = standardOutput.Result.IndexOf("Installing SDK 7.0.410", StringComparison.Ordinal);
+            Assert.IsTrue(sdk10 >= 0 && sdk7 > sdk10, "Missing SDKs must be processed newest first.");
+            StringAssert.Contains(
+                standardOutput.Result,
+                "Dry-run switches for SDK 10.0.302: --version --install-dir --no-path --dry-run");
+            StringAssert.Contains(
+                standardOutput.Result,
+                "Dry-run switches for SDK 7.0.410: --version --install-dir --no-path "
+                + "--skip-non-versioned-files --dry-run");
+            StringAssert.Contains(standardOutput.Result, "Dry run complete; no SDK payloads were installed.");
+            Assert.IsFalse(Directory.Exists(Path.Combine(installDirectory, "sdk")));
+            Assert.HasCount(
+                0,
+                Directory.GetFiles(scratchDirectory, "dotnet-install-*", SearchOption.TopDirectoryOnly),
+                "The downloaded installer must be removed after the dry run.");
+        }
+        finally
+        {
+            Directory.Delete(installDirectory, recursive: true);
+        }
+    }
+
     private static string CurrentDotnetHost()
     {
         var host = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH");

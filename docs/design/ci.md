@@ -1,7 +1,9 @@
 # Continuous integration
 
-One workflow, `.github/workflows/corpus-tests.yml`, running one job, `corpus-tests`, covering the
-corpus build matrix and the project-namespace guard.
+One workflow, `.github/workflows/corpus-tests.yml`, runs two jobs. `corpus-tests` covers the corpus
+build matrix and the project-namespace guard on Windows. `linux-sdk-installer` exercises the
+repository-private SDK installer's Linux check and Bash dry-run paths without downloading SDK
+payloads or attempting the Windows-only corpus matrix.
 
 **Nothing here currently executes.** Actions is disabled for this repository, so no trigger below
 fires and verification is whatever is run locally. The configuration is kept current anyway, so
@@ -26,7 +28,8 @@ Pushes to a feature branch do not trigger a run. Verification happens when a pul
 Every external reference is an exact coordinate. No floating major tags, no `-latest` runner label.
 
 ```yaml
-runs-on: windows-2025-vs2026
+runs-on: windows-2025-vs2026 # corpus-tests
+runs-on: ubuntu-24.04        # linux-sdk-installer
 
 - uses: actions/checkout@v7.0.1
 - uses: actions/setup-dotnet@v6.0.0
@@ -50,4 +53,5 @@ Nothing gates anything: Actions is disabled, so no run is produced at all, and e
 enabled, nothing blocks a merge on a result or blocks a direct push to `main`. Required status
 checks need a ruleset or branch protection, and both refuse while a repository is private on the
 GitHub Free plan. Activate the gate the same way as any repository once it goes public: confirm the
-`corpus-tests` check has reported at least once, then create a ruleset requiring it.
+`corpus-tests` and `linux-sdk-installer` checks have each reported at least once, then create a
+ruleset requiring both.
