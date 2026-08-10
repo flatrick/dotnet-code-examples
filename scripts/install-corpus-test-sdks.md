@@ -72,16 +72,13 @@ dotnet scripts/install-corpus-test-sdks.cs -- --install-dir "$PWD/.artifacts/cor
 To invoke the test project through the private host, set `DOTNET_HOST_PATH` and use that host:
 
 ```powershell
-$env:DOTNET_HOST_PATH = (Resolve-Path .artifacts\dotnet\dotnet.exe)
-& $env:DOTNET_HOST_PATH test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --nologo
+$env:DOTNET_HOST_PATH = '.artifacts\dotnet\dotnet.exe'; & $env:DOTNET_HOST_PATH test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --nologo
 ```
 
 On Linux:
 
 ```bash
-private_host="$PWD/.artifacts/dotnet/dotnet"
-DOTNET_HOST_PATH="$private_host" \
-  "$private_host" test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --nologo
+DOTNET_HOST_PATH='.artifacts/dotnet/dotnet' '.artifacts/dotnet/dotnet' test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --nologo
 ```
 
 Remove the private installation by deleting its directory, for example

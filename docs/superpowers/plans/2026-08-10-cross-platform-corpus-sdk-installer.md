@@ -181,7 +181,7 @@ git commit -m "docs: document private SDK installation on Linux"
 - Produces: one PowerShell or Bash command that sets `DOTNET_HOST_PATH` and invokes that same private
   host to run the corpus test project.
 
-- [ ] **Step 1: Write the failing process-level regression test**
+- [x] **Step 1: Write the failing process-level regression test**
 
 Add `CompletionPrintsCopyPasteTestCommandForCurrentPlatform`. On Linux, create an executable fake
 private host under a uniquely named `.scratch/corpus-sdk-command-'quote'-<guid>` directory whose
@@ -203,7 +203,7 @@ Private test host: $env:DOTNET_HOST_PATH = '<escaped-host>'; & $env:DOTNET_HOST_
 The production mutation this test catches is removing the environment assignment, invoking a host
 other than the assigned path, or emitting shell quoting that cannot represent the selected path.
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run:
 
@@ -217,7 +217,7 @@ DOTNET_HOST_PATH="$private_host" "$private_host" test \
 Expected on Linux: FAIL because the current output invokes the quoted host but omits the
 `DOTNET_HOST_PATH=...` assignment.
 
-- [ ] **Step 3: Implement the two shell command formats**
+- [x] **Step 3: Implement the two shell command formats**
 
 Change `FormatTestCommand` so PowerShell produces:
 
@@ -230,13 +230,13 @@ return IsWindows
 Retain the existing PowerShell single-quote escaping and POSIX single-quote escaping when computing
 `quotedHost`.
 
-- [ ] **Step 4: Update operator documentation**
+- [x] **Step 4: Update operator documentation**
 
 Make the PowerShell and Bash examples in `scripts/install-corpus-test-sdks.md` exactly match the
 single commands printed by successful completion. Keep them one-command copy-paste examples and do
 not mutate `PATH`.
 
-- [ ] **Step 5: Run focused verification and verify GREEN**
+- [x] **Step 5: Run focused verification and verify GREEN**
 
 Run:
 
@@ -251,7 +251,7 @@ git diff --check
 Expected: all installer-script tests pass with zero build warnings and errors; `git diff --check`
 prints nothing and exits `0`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add scripts/install-corpus-test-sdks.cs scripts/install-corpus-test-sdks.md \

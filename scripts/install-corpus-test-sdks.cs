@@ -321,7 +321,8 @@ internal sealed class CorpusSdkInstallerPlatform
         var quotedHost = IsWindows
             ? $"'{privateHost.Replace("'", "''", StringComparison.Ordinal)}'"
             : $"'{privateHost.Replace("'", "'\"'\"'", StringComparison.Ordinal)}'";
-        var prefix = IsWindows ? "& " : string.Empty;
-        return $"{prefix}{quotedHost} test {testProject} --nologo";
+        return IsWindows
+            ? $"$env:DOTNET_HOST_PATH = {quotedHost}; & $env:DOTNET_HOST_PATH test {testProject} --nologo"
+            : $"DOTNET_HOST_PATH={quotedHost} {quotedHost} test {testProject} --nologo";
     }
 }

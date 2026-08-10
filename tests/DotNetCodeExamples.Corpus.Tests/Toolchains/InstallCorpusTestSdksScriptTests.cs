@@ -6,6 +6,8 @@ namespace DotNetCodeExamples.Corpus.Tests.Toolchains;
 [TestCategory("Integration")]
 public sealed class InstallCorpusTestSdksScriptTests
 {
+    private static readonly string[] RequiredSdkVersions = ["5.0.408", "7.0.410", "10.0.302"];
+
     [TestMethod]
     [Timeout(60_000)]
     public async Task CheckModeInspectsAnEmptyPrivateDirectoryOnTheCurrentPlatform()
@@ -142,6 +144,131 @@ public sealed class InstallCorpusTestSdksScriptTests
             Directory.Delete(installDirectory, recursive: true);
         }
     }
+
+    [TestMethod]
+    [Timeout(60_000)]
+    public async Task CompletionPrintsCopyPasteTestCommandForCurrentPlatform()
+    {
+        if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux())
+        {
+            Assert.Inconclusive("The corpus SDK installer supports Windows and Linux only.");
+            return;
+        }
+
+        var repositoryRoot = RepositoryRoot();
+        string privateHost;
+        string installDirectory;
+        var removeInstallDirectory = false;
+
+        if (OperatingSystem.IsLinux())
+        {
+            installDirectory = Path.Combine(
+                repositoryRoot,
+                ".scratch",
+                $"corpus-sdk-command-'quote'-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(installDirectory);
+            privateHost = Path.Combine(installDirectory, "dotnet");
+            await File.WriteAllTextAsync(
+                privateHost,
+                """
+                #!/usr/bin/env bash
+                if [ "$1" = "--list-sdks" ]; then
+                    printf '5.0.408 [%s/sdk]\n' "$(dirname "$0")"
+                    printf '7.0.410 [%s/sdk]\n' "$(dirname "$0")"
+                    printf '10.0.302 [%s/sdk]\n' "$(dirname "$0")"
+                    exit 0
+                fi
+                exit 64
+                """);
+            File.SetUnixFileMode(
+                privateHost,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            removeInstallDirectory = true;
+        }
+        else
+        {
+            installDirectory = Path.Combine(repositoryRoot, ".artifacts", "dotnet");
+            privateHost = Path.Combine(installDirectory, "dotnet.exe");
+            if (!File.Exists(privateHost))
+            {
+                Assert.Inconclusive("The default private Windows dotnet host is not installed.");
+                return;
+            }
+
+            var inventory = await RunProcess(privateHost, "--list-sdks", repositoryRoot);
+            if (inventory.ExitCode != 0
+                || !RequiredSdkVersions
+                    .All(version => inventory.StandardOutput.Contains(version + " [", StringComparison.Ordinal)))
+            {
+                Assert.Inconclusive("The default private Windows dotnet host does not contain all required SDKs.");
+                return;
+            }
+        }
+
+        try
+        {
+            var result = await RunInstaller(repositoryRoot, "--install-dir", installDirectory);
+
+            Assert.AreEqual(0, result.ExitCode, result.StandardError);
+            var quotedHost = OperatingSystem.IsWindows()
+                ? $"'{privateHost.Replace("'", "''", StringComparison.Ordinal)}'"
+                : $"'{privateHost.Replace("'", "'\"'\"'", StringComparison.Ordinal)}'";
+            var expectedCommand = OperatingSystem.IsWindows()
+                ? $"$env:DOTNET_HOST_PATH = {quotedHost}; & $env:DOTNET_HOST_PATH test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --nologo"
+                : $"DOTNET_HOST_PATH={quotedHost} {quotedHost} test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --nologo";
+            CollectionAssert.Contains(
+                result.StandardOutput.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries),
+                "Private test host: " + expectedCommand);
+        }
+        finally
+        {
+            if (removeInstallDirectory && Directory.Exists(installDirectory))
+                Directory.Delete(installDirectory, recursive: true);
+        }
+    }
+
+    private static async Task<ProcessResult> RunInstaller(string repositoryRoot, params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo(CurrentDotnetHost())
+        {
+            WorkingDirectory = repositoryRoot,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        startInfo.ArgumentList.Add("scripts/install-corpus-test-sdks.cs");
+        startInfo.ArgumentList.Add("--");
+        foreach (var argument in arguments)
+            startInfo.ArgumentList.Add(argument);
+
+        return await RunProcess(startInfo);
+    }
+
+    private static async Task<ProcessResult> RunProcess(string fileName, string argument, string workingDirectory)
+    {
+        var startInfo = new ProcessStartInfo(fileName)
+        {
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        startInfo.ArgumentList.Add(argument);
+        return await RunProcess(startInfo);
+    }
+
+    private static async Task<ProcessResult> RunProcess(ProcessStartInfo startInfo)
+    {
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Could not start the process.");
+        var standardOutput = process.StandardOutput.ReadToEndAsync();
+        var standardError = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        await Task.WhenAll(standardOutput, standardError);
+        return new ProcessResult(process.ExitCode, standardOutput.Result, standardError.Result);
+    }
+
+    private sealed record ProcessResult(int ExitCode, string StandardOutput, string StandardError);
 
     private static string CurrentDotnetHost()
     {
