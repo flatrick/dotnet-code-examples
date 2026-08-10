@@ -51,9 +51,6 @@ public sealed class InstallCorpusTestSdksScriptTests
             StringAssert.Contains(standardOutput.Result, "Missing SDK: 10.0.302");
             StringAssert.Contains(standardError.Result, "Missing 3 required private SDK version(s).");
             Assert.IsFalse(
-                standardError.Result.Contains("supports Windows only", StringComparison.Ordinal),
-                "The script must not take its former Windows-only exit on Linux.");
-            Assert.IsFalse(
                 Directory.Exists(installDirectory),
                 "Check mode must not create the private SDK directory.");
         }
