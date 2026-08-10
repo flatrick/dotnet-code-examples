@@ -20,6 +20,8 @@
       drifting apart. Edit it at its own path, not through this link.
     -->
     <Compile Include="..\..\scripts\shared\CompileItems.cs" Link="Shared\CompileItems.cs" />
+    <Compile Include="..\..\scripts\shared\CorpusSdkInstallerPlatform.cs"
+             Link="Shared\CorpusSdkInstallerPlatform.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="5.6.0" PrivateAssets="all" GeneratePathProperty="true" />
