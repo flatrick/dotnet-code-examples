@@ -77,6 +77,10 @@ public sealed class InstallCorpusTestSdksScriptTests
             scratchDirectory,
             $"corpus-sdk-dry-run-{Guid.NewGuid():N}");
         Directory.CreateDirectory(installDirectory);
+        var installersBefore = Directory.GetFiles(
+            scratchDirectory,
+            "dotnet-install-*",
+            SearchOption.TopDirectoryOnly);
 
         try
         {
@@ -128,10 +132,10 @@ public sealed class InstallCorpusTestSdksScriptTests
                 + "--skip-non-versioned-files --dry-run");
             StringAssert.Contains(standardOutput.Result, "Dry run complete; no SDK payloads were installed.");
             Assert.IsFalse(Directory.Exists(Path.Combine(installDirectory, "sdk")));
-            Assert.HasCount(
-                0,
+            CollectionAssert.AreEquivalent(
+                installersBefore,
                 Directory.GetFiles(scratchDirectory, "dotnet-install-*", SearchOption.TopDirectoryOnly),
-                "The downloaded installer must be removed after the dry run.");
+                "The dry run must not leave behind its downloaded installer.");
         }
         finally
         {
