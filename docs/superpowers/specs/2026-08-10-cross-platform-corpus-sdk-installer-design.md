@@ -68,8 +68,12 @@ newer host without preventing a newly installed SDK from replacing an older host
 installer is deleted in a `finally` block.
 
 After installation, the program asks the private host for its SDK inventory again and fails if any
-required exact version is absent. Its success output prints a command appropriate to the current
-shell family. Network, installer, or process failures retain captured standard output and error.
+required exact version is absent. Its success output prints one self-contained command appropriate
+to the current shell family. The command sets `DOTNET_HOST_PATH` to the private host and invokes
+that same host, so it can be copied and pasted without any preceding shell setup. PowerShell uses a
+semicolon-separated environment assignment and invocation; Bash uses an environment assignment
+scoped to the invocation. Paths are quoted and escaped for the selected shell. Network, installer,
+or process failures retain captured standard output and error.
 
 Other operating systems fail before filesystem or network mutation with an explicit supported-OS
 message.
@@ -89,7 +93,9 @@ Ubuntu; it does not attempt the Windows-only corpus matrix.
 Focused verification runs that test and exercises the program directly on Linux. Full verification
 builds and runs the repository test project to the extent supported by the host; Windows-only
 toolchain tests remain governed by their existing matrix contract. Documentation examples cover
-both PowerShell and Bash without recommending AUR or another distro package manager.
+both PowerShell and Bash without recommending AUR or another distro package manager. Tests assert
+the literal PowerShell and Bash command formats independently, including `DOTNET_HOST_PATH`, shell
+quoting, and invocation of the private host.
 
 ## Non-Goals
 
