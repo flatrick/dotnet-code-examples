@@ -13,6 +13,7 @@ using System.Text.RegularExpressions;
 var requiredVersions = new[] { "5.0.408", "7.0.410", "10.0.302" };
 var installDir = "";
 var checkOnly = false;
+var dryRun = false;
 
 for (var i = 0; i < args.Length; i++)
 {
@@ -20,6 +21,9 @@ for (var i = 0; i < args.Length; i++)
     {
         case "--check":
             checkOnly = true;
+            break;
+        case "--dry-run":
+            dryRun = true;
             break;
         case "--install-dir":
             if (installDir.Length != 0 || ++i >= args.Length || args[i].Length == 0
@@ -33,9 +37,19 @@ for (var i = 0; i < args.Length; i++)
     }
 }
 
-if (!OperatingSystem.IsWindows())
+if (checkOnly && dryRun)
+    return Usage("--check and --dry-run cannot be specified together.");
+
+CorpusSdkInstallerPlatform platform;
+try
 {
-    Console.Error.WriteLine("install-corpus-test-sdks.cs supports Windows only; the corpus matrix CI is Windows.");
+    platform = CorpusSdkInstallerPlatform.ForOperatingSystem(
+        OperatingSystem.IsWindows(),
+        OperatingSystem.IsLinux());
+}
+catch (PlatformNotSupportedException exception)
+{
+    Console.Error.WriteLine(exception.Message);
     return 1;
 }
 
@@ -44,7 +58,7 @@ var repoRoot = FindRepoRoot(Environment.CurrentDirectory)
 var resolvedInstallDir = Path.GetFullPath(installDir.Length == 0
     ? Path.Combine(repoRoot, ".artifacts", "dotnet")
     : installDir);
-var privateHost = Path.Combine(resolvedInstallDir, "dotnet.exe");
+var privateHost = Path.Combine(resolvedInstallDir, platform.HostFileName);
 
 Console.WriteLine($"Private SDK directory: {resolvedInstallDir}");
 
@@ -68,25 +82,44 @@ if (checkOnly)
 
 if (missingVersions.Length != 0)
 {
-    Directory.CreateDirectory(resolvedInstallDir);
-    var installerPath = Path.Combine(Path.GetTempPath(), $"dotnet-install-{Guid.NewGuid():N}.ps1");
+    if (!dryRun)
+        Directory.CreateDirectory(resolvedInstallDir);
+    var scratchDirectory = Path.Combine(repoRoot, ".scratch");
+    Directory.CreateDirectory(scratchDirectory);
+    var installerPath = Path.Combine(
+        scratchDirectory,
+        $"dotnet-install-{Guid.NewGuid():N}{platform.InstallerExtension}");
 
     try
     {
-        Console.WriteLine("Downloading the Microsoft dotnet-install script to a temporary file.");
+        Console.WriteLine("Downloading the Microsoft dotnet-install script to the repository scratch directory.");
         using var client = new HttpClient();
         await File.WriteAllBytesAsync(installerPath,
-            await client.GetByteArrayAsync("https://dot.net/v1/dotnet-install.ps1"));
+            await client.GetByteArrayAsync(platform.InstallerUri));
 
-        foreach (var version in missingVersions)
+        foreach (var version in missingVersions.OrderByDescending(Version.Parse))
         {
             Console.WriteLine($"Installing SDK {version} into the private directory.");
+            var installerArguments = platform.BuildInstallerArguments(
+                installerPath,
+                version,
+                resolvedInstallDir,
+                CorpusSdkInstallerPlatform.ShouldPreserveExistingHost(version, presentVersions),
+                dryRun);
+
+            if (dryRun)
+            {
+                var switches = installerArguments.Where(
+                    argument => argument.StartsWith("-", StringComparison.Ordinal));
+                Console.WriteLine($"Dry-run switches for SDK {version}: {string.Join(" ", switches)}");
+            }
+
             var result = await RunProcess(
-                "powershell.exe",
-                "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", installerPath,
-                "-Version", version, "-InstallDir", resolvedInstallDir, "-NoPath");
+                platform.RunnerFileName,
+                installerArguments);
             ReportProcessOutput($"Installer output for SDK {version}", result);
             RequireSuccess($"Installer for SDK {version}", result);
+            presentVersions.Add(version);
         }
     }
     finally
@@ -96,6 +129,12 @@ if (missingVersions.Length != 0)
     }
 }
 
+if (dryRun)
+{
+    Console.WriteLine("Dry run complete; no SDK payloads were installed.");
+    return 0;
+}
+
 presentVersions = ListInstalledSdkVersions(privateHost);
 missingVersions = requiredVersions.Where(version => !presentVersions.Contains(version)).ToArray();
 if (missingVersions.Length != 0)
@@ -103,13 +142,16 @@ if (missingVersions.Length != 0)
         + string.Join(", ", missingVersions) + ".");
 
 Console.WriteLine("All required private SDKs are present.");
-Console.WriteLine($"Private test host: & {QuoteForPowerShell(privateHost)} test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj --nologo");
+Console.WriteLine("Private test host: " + platform.FormatTestCommand(
+    privateHost,
+    "tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj"));
 return 0;
 
 static int Usage(string error)
 {
     Console.Error.WriteLine(error);
-    Console.Error.WriteLine("Usage: dotnet scripts/install-corpus-test-sdks.cs -- [--check] [--install-dir <path>]");
+    Console.Error.WriteLine(
+        "Usage: dotnet scripts/install-corpus-test-sdks.cs -- [--check | --dry-run] [--install-dir <path>]");
     return 2;
 }
 
@@ -184,6 +226,103 @@ static string? FindRepoRoot(string start)
     return null;
 }
 
-static string QuoteForPowerShell(string path) => $"'{path.Replace("'", "''", StringComparison.Ordinal)}'";
-
 internal readonly record struct ProcessResult(int ExitCode, string StandardOutput, string StandardError);
+
+// This bootstrap script must stay self-contained: a .NET 10.0.1xx host can run a file-based C#
+// program but does not recognize #:include, and installing the required 10.0.3xx host is this
+// program's job.
+internal sealed class CorpusSdkInstallerPlatform
+{
+    private static readonly CorpusSdkInstallerPlatform Windows = new(
+        isWindows: true,
+        hostFileName: "dotnet.exe",
+        installerUri: "https://dot.net/v1/dotnet-install.ps1",
+        installerExtension: ".ps1",
+        runnerFileName: "powershell.exe");
+
+    private static readonly CorpusSdkInstallerPlatform Linux = new(
+        isWindows: false,
+        hostFileName: "dotnet",
+        installerUri: "https://dot.net/v1/dotnet-install.sh",
+        installerExtension: ".sh",
+        runnerFileName: "bash");
+
+    private CorpusSdkInstallerPlatform(
+        bool isWindows,
+        string hostFileName,
+        string installerUri,
+        string installerExtension,
+        string runnerFileName)
+    {
+        IsWindows = isWindows;
+        HostFileName = hostFileName;
+        InstallerUri = installerUri;
+        InstallerExtension = installerExtension;
+        RunnerFileName = runnerFileName;
+    }
+
+    private bool IsWindows { get; }
+
+    internal string HostFileName { get; }
+
+    internal string InstallerUri { get; }
+
+    internal string InstallerExtension { get; }
+
+    internal string RunnerFileName { get; }
+
+    internal static CorpusSdkInstallerPlatform ForOperatingSystem(bool isWindows, bool isLinux)
+    {
+        if (isWindows)
+            return Windows;
+        if (isLinux)
+            return Linux;
+
+        throw new PlatformNotSupportedException(
+            "install-corpus-test-sdks.cs supports Windows and Linux only; the full corpus matrix requires Windows.");
+    }
+
+    internal static bool ShouldPreserveExistingHost(
+        string version,
+        IEnumerable<string> presentVersions)
+    {
+        var installingVersion = Version.Parse(version);
+        return presentVersions.Any(presentVersion => Version.Parse(presentVersion) > installingVersion);
+    }
+
+    internal string[] BuildInstallerArguments(
+        string installerPath,
+        string version,
+        string installDir,
+        bool preserveExistingHost,
+        bool dryRun)
+    {
+        var arguments = IsWindows
+            ? new List<string>
+            {
+                "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", installerPath,
+                "-Version", version, "-InstallDir", installDir, "-NoPath"
+            }
+            : new List<string>
+            {
+                installerPath, "--version", version, "--install-dir", installDir, "--no-path"
+            };
+
+        if (preserveExistingHost)
+            arguments.Add(IsWindows ? "-SkipNonVersionedFiles" : "--skip-non-versioned-files");
+        if (dryRun)
+            arguments.Add(IsWindows ? "-DryRun" : "--dry-run");
+
+        return arguments.ToArray();
+    }
+
+    internal string FormatTestCommand(string privateHost, string testProject)
+    {
+        var quotedHost = IsWindows
+            ? $"'{privateHost.Replace("'", "''", StringComparison.Ordinal)}'"
+            : $"'{privateHost.Replace("'", "'\"'\"'", StringComparison.Ordinal)}'";
+        return IsWindows
+            ? $"$env:DOTNET_HOST_PATH = {quotedHost}; & $env:DOTNET_HOST_PATH test {testProject} --nologo"
+            : $"DOTNET_HOST_PATH={quotedHost} {quotedHost} test {testProject} --nologo";
+    }
+}

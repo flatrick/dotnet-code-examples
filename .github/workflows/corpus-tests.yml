@@ -18,6 +18,22 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  linux-sdk-installer:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@v6.0.0
+        with:
+          dotnet-version: 10.0.302
+
+      - name: Verify Linux private SDK installer
+        run: >-
+          dotnet test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Tests.csproj
+          --nologo --filter FullyQualifiedName~InstallCorpusTestSdksScriptTests
+
   corpus-tests:
     runs-on: windows-2025-vs2026
 
