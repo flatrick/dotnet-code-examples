@@ -38,7 +38,7 @@ production behavior.
 - Produces: a process-level regression test for the existing installer command line.
 - Consumes: the current `dotnet` host and a unique nonexistent installation path under `.scratch/`.
 
-- [ ] **Step 1: Write a failing integration test against the real script**
+- [x] **Step 1: Write a failing integration test against the real script**
 
 Launch the current `dotnet` host with:
 
@@ -51,7 +51,7 @@ version, error output `Missing 3 required private SDK version(s).`, absence of a
 and absence of the installation directory after the command. Mark other operating systems
 inconclusive.
 
-- [ ] **Step 2: Run the integration test and verify RED on Linux**
+- [x] **Step 2: Run the integration test and verify RED on Linux**
 
 Run:
 
@@ -75,7 +75,7 @@ inventory reporting.
   paths.
 - Produces: a Linux Bash-installer smoke path that resolves payloads without downloading them.
 
-- [ ] **Step 1: Implement platform selection and installer invocation**
+- [x] **Step 1: Implement platform selection and installer invocation**
 
 Replace the Windows-only guard and hard-coded host/installer values with a self-contained platform
 contract. Download the selected installer extension and order missing versions with `Version.Parse`
@@ -83,7 +83,7 @@ descending. Preserve non-versioned files only when the inventory already contain
 the one being installed, so a newer host is retained without preventing replacement of an older
 host. Retain captured output, cleanup, exact post-install inventory verification, and usage behavior.
 
-- [ ] **Step 2: Run the integration test and verify GREEN**
+- [x] **Step 2: Run the integration test and verify GREEN**
 
 Run:
 
@@ -94,7 +94,7 @@ dotnet test tests/DotNetCodeExamples.Corpus.Tests/DotNetCodeExamples.Corpus.Test
 
 Expected: the focused test passes with zero build warnings and errors.
 
-- [ ] **Step 3: Exercise Linux check mode directly**
+- [x] **Step 3: Exercise Linux check mode directly**
 
 Run:
 
@@ -106,13 +106,13 @@ dotnet scripts/install-corpus-test-sdks.cs -- \
 Expected: exit `1`, normal private-directory and three-missing-SDK reporting, no download, and no
 creation of `.scratch/corpus-sdk-linux-check`.
 
-- [ ] **Step 4: Exercise the Linux installer without downloading payloads**
+- [x] **Step 4: Exercise the Linux installer without downloading payloads**
 
 Run the installer tests on Linux. The dry-run test supplies a temporary private host reporting SDK
 5.0.408, downloads Microsoft's Bash installer, and requires successful newest-first requests for
 10.0.302 and 7.0.410. It must leave neither SDK payloads nor an installer file behind.
 
-- [ ] **Step 5: Commit the real script behavior**
+- [x] **Step 5: Commit the real script behavior**
 
 ```bash
 git add scripts/install-corpus-test-sdks.cs \
@@ -131,7 +131,7 @@ git commit -m "feat: support Linux corpus SDK installation"
 - Consumes: the unchanged CLI and platform-specific host names from Task 2.
 - Produces: PowerShell and Bash instructions that use only the repository-private installation.
 
-- [ ] **Step 1: Update the operator documentation**
+- [x] **Step 1: Update the operator documentation**
 
 Keep the exact SDK list and explain that the tool downloads Microsoft's platform installer. Add
 PowerShell and Bash blocks for installation, `--check`, custom installation roots, and invoking the
@@ -141,7 +141,7 @@ the operator's responsibility, and the full corpus matrix remains Windows-only.
 Add a pinned Ubuntu job that runs only `InstallCorpusTestSdksScriptTests`; it must not install the
 private SDK payloads or run the Windows-only corpus matrix.
 
-- [ ] **Step 2: Run repository verification**
+- [x] **Step 2: Run repository verification**
 
 Run:
 
@@ -156,12 +156,12 @@ The direct check is expected to exit `1` because the temporary root is empty; it
 normal missing-inventory result. Classify Windows-only corpus test failures separately from failures
 introduced by this change.
 
-- [ ] **Step 3: Review the final diff**
+- [x] **Step 3: Review the final diff**
 
 Confirm the diff contains no tracked shell script, package-manager instruction, PATH mutation,
 third-party content, unrelated refactor, or accidental generated artifact.
 
-- [ ] **Step 4: Commit documentation**
+- [x] **Step 4: Commit documentation**
 
 ```bash
 git add scripts/install-corpus-test-sdks.md
