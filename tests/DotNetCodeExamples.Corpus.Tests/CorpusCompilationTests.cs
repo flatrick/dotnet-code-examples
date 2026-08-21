@@ -38,13 +38,24 @@ public sealed class CorpusCompilationTests
             throw;
         }
 
-        using var result = await ProbeProject.BuildAsync(
-            sdk,
-            expectation,
-            testCase.Source,
-            harnessPath: null,
-            testCase.ProjectReferences,
-            TestContext.CancellationToken);
+        ProbeResult result;
+        try
+        {
+            result = await ProbeProject.BuildAsync(
+                sdk,
+                expectation,
+                testCase.Source,
+                harnessPath: null,
+                testCase.ProjectReferences,
+                TestContext.CancellationToken);
+        }
+        catch (InvalidOperationException exception)
+        {
+            Assert.Inconclusive($"{coordinate}{Environment.NewLine}{exception.Message}");
+            throw;
+        }
+
+        using var _ = result;
         var failure = $"{coordinate}{Environment.NewLine}{result.CompleteOutput}";
 
         if (expectation.Outcome == BuildOutcome.Success)

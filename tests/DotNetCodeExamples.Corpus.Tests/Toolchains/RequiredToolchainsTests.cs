@@ -111,6 +111,14 @@ public sealed class RequiredToolchainsTests
     {
         if (NetFrameworkTargetFramework.IsFramework(targetFramework))
         {
+            // Not merely "missing" -- no non-Windows host will ever satisfy this, so it is not
+            // required here at all. Requiring it would fail this test permanently on Linux/macOS,
+            // for a gap no install can close.
+            if (!OperatingSystem.IsWindows())
+            {
+                return null;
+            }
+
             return new NetFrameworkRuntime().TryResolve(out var reason) ? null : reason;
         }
 

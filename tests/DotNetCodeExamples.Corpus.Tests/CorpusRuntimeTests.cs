@@ -63,13 +63,24 @@ public sealed class CorpusRuntimeTests
             expectation.LanguageVersion,
             BuildOutcome.Success,
             []);
-        using var build = await ProbeProject.BuildAsync(
-            sdk,
-            compilation,
-            testCase.Source,
-            expectation.Harness,
-            testCase.ProjectReferences,
-            TestContext.CancellationToken);
+        ProbeResult build;
+        try
+        {
+            build = await ProbeProject.BuildAsync(
+                sdk,
+                compilation,
+                testCase.Source,
+                expectation.Harness,
+                testCase.ProjectReferences,
+                TestContext.CancellationToken);
+        }
+        catch (InvalidOperationException exception)
+        {
+            Assert.Inconclusive($"{coordinate}{Environment.NewLine}{exception.Message}");
+            throw;
+        }
+
+        using var _ = build;
         var buildFailure = $"{coordinate}{Environment.NewLine}{build.CompleteOutput}";
         Assert.AreEqual(0, build.Process.ExitCode, buildFailure);
         Assert.IsFalse(

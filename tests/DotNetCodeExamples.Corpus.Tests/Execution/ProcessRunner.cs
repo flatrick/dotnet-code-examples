@@ -41,13 +41,25 @@ internal sealed class ProcessRunner
         cancellationToken.ThrowIfCancellationRequested();
 
         var resolvedWorkingDirectory = workingDirectory ?? Environment.CurrentDirectory;
-        var startInfo = new ProcessStartInfo(executable)
+        var startInfo = new ProcessStartInfo(OperatingSystem.IsWindows() ? executable : "setsid")
         {
             WorkingDirectory = resolvedWorkingDirectory,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false
         };
+
+        // setsid(1) joins a new session -- and so a new process group -- before it execs into
+        // `executable`, so a descendant that later gets reparented to init (its immediate parent
+        // exited first) is still a member of the same group and stays reachable by
+        // KillProcessTree's group-wide signal below. Doing this from here instead, by calling
+        // setpgid() on the child after Start() returns, loses the race against a child that forks
+        // its own descendants quickly (as a shell backgrounding a job does).
+        if (!OperatingSystem.IsWindows())
+        {
+            startInfo.ArgumentList.Add("--wait");
+            startInfo.ArgumentList.Add(executable);
+        }
 
         foreach (var argument in arguments)
         {
@@ -71,6 +83,7 @@ internal sealed class ProcessRunner
 
         using var process = new Process { StartInfo = startInfo };
         process.Start();
+
         IDisposable? processJob;
         try
         {
@@ -136,11 +149,28 @@ internal sealed class ProcessRunner
 
     private static void KillProcessTree(Process process)
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            // process.Id is also the process group id, established by the setsid wrapper in
+            // RunAsync before it exec'd into the real command. A negative pid tells kill(2) to
+            // signal the whole group unconditionally -- mirroring the Windows job object kill
+            // below, which reaches every member regardless of whether the tracked process has
+            // already exited. That matters here: the tracked process routinely exits within
+            // milliseconds of backgrounding a descendant, well before this runs, and
+            // entireProcessTree only walks live parent/child links, which reparenting severs.
+            _ = kill(-process.Id, SIGKILL);
+        }
+
         if (!process.HasExited)
         {
             process.Kill(entireProcessTree: true);
         }
     }
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int kill(int pid, int signal);
+
+    private const int SIGKILL = 9;
 
     private sealed class ProcessJob : IDisposable
     {

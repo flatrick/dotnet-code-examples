@@ -70,6 +70,19 @@ internal sealed partial class ProbeProject
                 projectDirectory,
                 new Dictionary<string, string?> { ["MSBuildSDKsPath"] = null },
                 cancellationToken);
+
+            // SDK 5.0.408's own tooling runs on net5.0, which needs OpenSSL 1.1 for the TLS restore
+            // needs -- a package current Linux distributions have dropped. The SDK is genuinely
+            // installed (ResolveSdk already succeeded); it just cannot restore or build on this
+            // host, which is a different condition than "not installed" and needs its own message.
+            if (process.StandardError.Contains("No usable version of libssl was found", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"SDK {sdk.Version} is installed but could not build on this host: " +
+                    $"{process.StandardError.Trim()}{Environment.NewLine}" +
+                    "This SDK's tooling requires OpenSSL 1.1, which this Linux distribution does not provide.");
+            }
+
             result = new ProbeResult(
                 process,
                 ExtractDiagnostics(process),
