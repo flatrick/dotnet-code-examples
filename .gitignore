@@ -37,3 +37,4 @@ node_modules/
 # window layout, and the binary .suo. All of it is machine-local and none of it is content.
 .vs/
 *.rsuser
+.zvec-grep/
